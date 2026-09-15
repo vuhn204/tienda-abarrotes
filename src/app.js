@@ -3,7 +3,7 @@ const cors = require('cors');
 
 const clientesRoutes = require('./clientes/clientes.routes');
 const productosRoutes = require('./productos/productos.routes');
-const ventasRoutes = require('./ventas/ventas.routes');
+// const ventasRoutes = require('./ventas/ventas.routes');
 
 const app = express();
 
@@ -16,7 +16,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/productos', productosRoutes);
-app.use('/api/ventas', ventasRoutes);
+// app.use('/api/ventas', ventasRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ mensaje: 'Ruta no encontrada' });
