@@ -18,7 +18,7 @@ async function testConnection() {
     connection.release();
   } catch (error) {
     console.error('Error al conectar a MySQL:', error.message);
-    // CAMBIO : si la conexión inicial falla, se detiene el proceso.
+    // CAMBIO: si la conexión inicial falla, se detiene el proceso.
     process.exit(1);
   }
 }
