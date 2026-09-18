@@ -1,5 +1,6 @@
 const productosModel = require('./productos.model');
 
+// Devuelve todos los productos activos
 async function getAll(req, res, next) {
   try {
     const productos = await productosModel.findAll();
@@ -9,6 +10,7 @@ async function getAll(req, res, next) {
   }
 }
 
+// Busca un producto por id, devuelve 404 si no existe
 async function getById(req, res, next) {
   try {
     const producto = await productosModel.findById(req.params.id);
@@ -21,6 +23,7 @@ async function getById(req, res, next) {
   }
 }
 
+// Crea un producto nuevo, validando los campos mínimos
 async function create(req, res, next) {
   try {
     const { nombre, categoria } = req.body;
@@ -35,6 +38,7 @@ async function create(req, res, next) {
   }
 }
 
+// Actualiza un producto existente
 async function update(req, res, next) {
   try {
     const producto = await productosModel.findById(req.params.id);
@@ -48,6 +52,7 @@ async function update(req, res, next) {
   }
 }
 
+// Baja lógica: no borra el registro, solo lo marca como inactivo
 async function remove(req, res, next) {
   try {
     const eliminado = await productosModel.remove(req.params.id);

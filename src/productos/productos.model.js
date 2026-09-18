@@ -1,5 +1,6 @@
 const { pool } = require('../db/connection');
 
+// Solo trae productos activos, los más nuevos primero
 async function findAll() {
   const [rows] = await pool.query(
     'SELECT * FROM productos WHERE activo = TRUE ORDER BY id DESC'
@@ -12,6 +13,7 @@ async function findById(id) {
   return rows[0] || null; 
 }
 
+// Inserta el producto en BD y devuelve el registro ya creado
 async function create(producto) {
   const { nombre, categoria, descripcion, stock } = producto;
   const precioUnit = producto.precioUnit ?? producto.precio_unit;
@@ -25,6 +27,7 @@ async function create(producto) {
   return findById(result.insertId);
 }
 
+// Actualiza los campos del producto y devuelve el registro actualizado
 async function update(id, producto) {
   const { nombre, categoria, descripcion, stock } = producto;
   const precioUnit = producto.precioUnit ?? producto.precio_unit;
@@ -39,6 +42,7 @@ async function update(id, producto) {
   return findById(id); 
 }
 
+// Marca el producto como inactivo (no lo borra físicamente)
 async function remove(id) {
   const [result] = await pool.query(
     'UPDATE productos SET activo = FALSE WHERE id = ?',

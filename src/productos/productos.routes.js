@@ -3,6 +3,7 @@ const productosController = require('./productos.controller');
 
 const router = Router();
 
+// Rutas CRUD del módulo de productos
 router.get('/', productosController.getAll);
 router.get('/:id', productosController.getById);
 router.post('/', productosController.create);
