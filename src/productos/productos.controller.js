@@ -23,9 +23,10 @@ async function getById(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { nombre, categoria, precioUnit } = req.body;
+    const { nombre, categoria } = req.body;
+    const precioUnit = req.body.precioUnit ?? req.body.precio_unit;
     if (!nombre || !categoria || !precioUnit) {
-      return res.status(400).json({ mensaje: 'nombre, categoria y precioUnit son obligatorios' });
+      return res.status(400).json({ mensaje: 'nombre, categoria y precioUnit (o precio_unit) son obligatorios' });
     }
     const nuevoProducto = await productosModel.create(req.body);
     res.status(201).json(nuevoProducto);

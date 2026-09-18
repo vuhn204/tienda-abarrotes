@@ -13,7 +13,10 @@ async function findById(id) {
 }
 
 async function create(producto) {
-  const { nombre, categoria, descripcion, precioUnit, stock, fechaProduccion, fechaCaducidad } = producto;
+  const { nombre, categoria, descripcion, stock } = producto;
+  const precioUnit = producto.precioUnit ?? producto.precio_unit;
+  const fechaProduccion = producto.fechaProduccion ?? producto.fecha_produccion;
+  const fechaCaducidad = producto.fechaCaducidad ?? producto.fecha_caducidad;
   const [result] = await pool.query(
     `INSERT INTO productos (nombre, categoria, descripcion, precio_unit, stock, fecha_produccion, fecha_caducidad)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -23,7 +26,10 @@ async function create(producto) {
 }
 
 async function update(id, producto) {
-  const { nombre, categoria, descripcion, precioUnit, stock, fechaProduccion, fechaCaducidad } = producto;
+  const { nombre, categoria, descripcion, stock } = producto;
+  const precioUnit = producto.precioUnit ?? producto.precio_unit;
+  const fechaProduccion = producto.fechaProduccion ?? producto.fecha_produccion;
+  const fechaCaducidad = producto.fechaCaducidad ?? producto.fecha_caducidad;
   await pool.query(
     `UPDATE productos
      SET nombre = ?, categoria = ?, descripcion = ?, precio_unit = ?, stock = ?, fecha_produccion = ?, fecha_caducidad = ?
