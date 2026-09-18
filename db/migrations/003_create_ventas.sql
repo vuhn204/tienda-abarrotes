@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS ventas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cliente_id INT NOT NULL,
+  producto_id INT NOT NULL,
+  nombre_producto VARCHAR(150) NOT NULL,
+  cantidad INT NOT NULL,
+  precio_unitario DECIMAL(10,2) NOT NULL,
+  total DECIMAL(10,2) NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'completada',
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+  FOREIGN KEY (producto_id) REFERENCES productos(id)
+);
