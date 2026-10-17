@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Deploy Docker Image
 
 on:
   push:
@@ -12,64 +12,45 @@ env:
 
 jobs:
 
-  build:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
         with:
-          java-version: '25'
-          distribution: 'temurin'
+          node-version: '24'
+          cache: 'npm'
 
-      - name: Give execute permission to mvnw
-        run: chmod +x mvnw
-
-      - name: Build
-        run: ./mvnw compile
-
-  test:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          java-version: '25'
-          distribution: 'temurin'
-
-      - name: Give execute permission to mvnw
-        run: chmod +x mvnw
+      - name: Install dependencies
+        run: npm ci
 
       - name: Test
-        run: ./mvnw test
+        run: npm test
 
   package:
     runs-on: ubuntu-latest
-    needs: test
+    needs: ci
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          java-version: '25'
-          distribution: 'temurin'
+      - name: Compute image name and tags
+        id: meta
+        run: |
+          IMAGE=${{ env.REGISTRY }}/$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          echo "tags=$IMAGE:latest,$IMAGE:${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
-      - name: Give execute permission to mvnw
-        run: chmod +x mvnw
-
-      - name: Package jar
-        run: ./mvnw package -DskipTests
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -80,37 +61,55 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
-        run: |
-          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
-
-          IMAGE_TAG=${{ env.REGISTRY }}/$IMAGE_NAME_LOWER:latest
-          # Tag con los 7 primeros caracteres del SHA (el mismo que usa deploy)
-          SHA_TAG=${{ env.REGISTRY }}/$IMAGE_NAME_LOWER:${GITHUB_SHA::7}
-
-          docker build -t $IMAGE_TAG -t $SHA_TAG .
-
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            docker push $IMAGE_TAG
-            docker push $SHA_TAG
-          fi
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     runs-on: self-hosted
     needs: package
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
+      contents: read
       packages: read
+    defaults:
+      run:
+        shell: powershell
+    env:
+      APP_IMAGE: ${{ needs.package.outputs.image }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     steps:
-      - name: Compute image name
-        id: img
-        run: echo "name=${{ env.REGISTRY }}/$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]'):${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-      - name: Run container on Docker Desktop
         run: |
-          docker pull --platform linux/amd64 ${{ steps.img.outputs.name }}
-          docker rm -f app || true
-          docker run -d --name app --platform linux/amd64 -p 8080:8080 ${{ steps.img.outputs.name }}
-          docker image prune -f
+          "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Remove container from the old workflow (if any)
+        run: |
+          $old = docker ps -aq --filter "name=^app$"
+          if ($old) { docker rm -f $old | Out-Null }
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose pull app
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          docker compose up -d --no-build --remove-orphans --wait --wait-timeout 180
+          if ($LASTEXITCODE -ne 0) { docker compose logs --tail 100; exit $LASTEXITCODE }
+
+      - name: Smoke test
+        run: |
+          $r = Invoke-RestMethod -Uri http://localhost:8080/health -TimeoutSec 10
+          if ($r.estado -ne 'ok') { Write-Error "Health check fallo"; exit 1 }
+          Write-Host "App OK en http://localhost:8080"
+
+      - name: Clean up old images
+        if: always()
+        run: docker image prune -f
