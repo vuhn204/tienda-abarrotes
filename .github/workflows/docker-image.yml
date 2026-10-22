@@ -87,10 +87,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      # Falla rápido si falta el secret, en vez de romper luego en docker compose
+      - name: Check required secrets
         run: |
-          "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ([string]::IsNullOrEmpty($env:DB_PASSWORD)) {
+            Write-Error "Falta el secret DB_PASSWORD (Settings > Secrets and variables > Actions)"
+            exit 1
+          }
+
+      # Usa la action en lugar del pipe de Windows PowerShell 5.1,
+      # que altera el token y provoca 'denied: denied' en ghcr.io
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remove container from the old workflow (if any)
         run: |
@@ -113,5 +125,3 @@ jobs:
       - name: Clean up old images
         if: always()
         run: docker image prune -f
-
-        
