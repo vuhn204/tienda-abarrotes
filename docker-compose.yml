@@ -1,0 +1,41 @@
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/vuhn204/tienda-abarrotes:latest}
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: tienda
+      DB_PASSWORD: ${DB_PASSWORD:admin}
+      DB_NAME: tienda_abarrotes
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # Usa node (ya viene en la imagen) para no depender de curl/wget
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tienda
+      POSTGRES_PASSWORD: ${DB_PASSWORD:admin}
+      POSTGRES_DB: tienda_abarrotes
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tienda -d tienda_abarrotes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
