@@ -9,7 +9,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: tienda
-      DB_PASSWORD: ${DB_PASSWORD:admin}
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
       DB_NAME: tienda_abarrotes
     depends_on:
       db:
@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: tienda
-      POSTGRES_PASSWORD: ${DB_PASSWORD:admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
       POSTGRES_DB: tienda_abarrotes
     volumes:
       - db_data:/var/lib/postgresql/data
