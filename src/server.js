@@ -7,5 +7,9 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, async () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);
-  await testConnection(); 
+  try {
+    await testConnection();
+  } catch (error) {
+    process.exit(1);
+  }
 });
